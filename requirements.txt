@@ -1,7 +1,10 @@
-# Podstawowe paczki
+# YOLO + zależności do detekcji ramek
 ultralytics==8.3.34
 pillow==10.4.0
 
-# YOLO potrzebuje PyTorch
+# PyTorch (CPU) kompatybilny z NumPy 1.x
 torch==2.2.2
 torchvision==0.17.2
+
+# Wymuszenie NumPy <2, aby uniknąć błędów z modułami skompilowanymi pod 1.x
+numpy<2
