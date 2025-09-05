@@ -141,7 +141,7 @@ document.querySelectorAll('area').forEach(area => {{
         e.preventDefault();
         const id = area.dataset.id;
         const t = translations.find(tr => tr.id === id);
-        document.getElementById('modalText').textContent = t ? t.translation : "Brak tłumaczenia";
+        document.getElementById('modalText').innerHTML = t ? "<pre>" + t.translation + "</pre>" : "<div>Brak tłumaczenia</div>";
         document.getElementById('modal').style.display = 'block';
     }});
 }});
