@@ -1,5 +1,5 @@
 # YOLO + zależności do detekcji ramek
-ultralytics==8.3.34
+ultralytics==8.3.193
 pillow==10.4.0
 
 # PyTorch (CPU) kompatybilny z NumPy 1.x
