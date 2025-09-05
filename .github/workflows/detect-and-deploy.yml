@@ -1,0 +1,69 @@
+name: Detect and Deploy Comic Panels
+
+on:
+  push:
+    branches: ["main"]
+    paths:
+      - "comic/**.jpg"
+      - "comic/**.png"
+      - "scripts/**.py"
+      - ".github/workflows/**.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.10"
+
+      - name: Install dependencies
+        run: |
+          pip install ultralytics pillow matplotlib
+
+      - name: Download YOLO model
+        run: |
+          mkdir -p models
+          curl -L -o models/comic.pt https://huggingface.co/mosesb/best-comic-panel-detection/resolve/main/best.pt
+
+      - name: Run detection script
+        run: python scripts/detect.py
+
+      - name: Prepare index.html
+        run: |
+          cat > output/index.html <<'EOF'
+          <!DOCTYPE html>
+          <html lang="en">
+          <head><meta charset="UTF-8"><title>Comic Panels</title></head>
+          <body>
+            <h1>Comic with Detected Panels</h1>
+            <iframe src="shinchan.html" width="100%" height="900px"></iframe>
+          </body>
+          </html>
+          EOF
+
+      - name: Upload artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: output/
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
