@@ -12,9 +12,10 @@ import base64
 INPUT_DIR = Path("output")  # artefakt z poprzedniego joba
 client = OpenAI(api_key=os.environ["OPENAI_API_KEY"])
 
-def translate_frame(image_crop):
+def translate_frame(image_crop, context_panels=None):
     """
     image_crop: PIL Image
+    context_panels: list of previous panel translations for context
     returns: dict with 'response' (str) and 'image_b64' (str)
     """
     buf = io.BytesIO()
@@ -40,6 +41,14 @@ def translate_frame(image_crop):
         "Nie zadawaj żadnych pytań. "
     )
     
+    # Add context from previous panels if available
+    context_text = ""
+    if context_panels:
+        context_text = "\n\nKONTEKST z poprzednich paneli:\n"
+        for i, panel in enumerate(context_panels[-5:], 1):  # Last 5 panels
+            context_text += f"Panel {i}: {panel['translation']}\n"
+        context_text += "\nTeraz przetłumacz następny panel, uwzględniając powyższy kontekst:\n"
+    
     response = client.chat.completions.create(
         model="gpt-5-chat-latest",
         messages=[
@@ -58,6 +67,7 @@ def translate_frame(image_crop):
                         "Nie sugeruj żadnych dodatkowych ćwiczeń ani zadań. Nie pytaj mnie o nic. "
                         "Nie dodawaj głownego nagłówka."
                         "Jeśli nie ma tekstu, odpowiedz 'ERROR'."
+                        + context_text
                     )},
                     {"type": "image_url", "image_url": {"url": data_url}}
                 ]
@@ -95,8 +105,10 @@ def process_page(image_file):
         x2, y2 = int(b["x2"]), int(b["y2"])
         crop = img.crop((x1, y1, x2, y2))
 
-        result = translate_frame(crop)
-        trans_id = b.get("id", idx)
+        # Pass context from previous successful translations
+        result = translate_frame(crop, translations)
+        # Ensure every panel has a stable string id (fallback to index if missing)
+        trans_id = str(b.get("id", idx))
         
         # Skip panels with ERROR response
         if result["response"].strip().upper() == "ERROR":
@@ -108,7 +120,10 @@ def process_page(image_file):
             "translation": result["response"],
             "image_b64": result["image_b64"]
         })
-        valid_boxes.append(b)
+        # Propagate id into valid_boxes to be used in <area data-id>
+        vb = dict(b)
+        vb["id"] = trans_id
+        valid_boxes.append(vb)
 
     # zapisz tłumaczenia
     out_trans_file = INPUT_DIR / f"{base}_translations.json"
