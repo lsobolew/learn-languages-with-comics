@@ -39,11 +39,11 @@ def translate_frame(image_crop):
     # response = "Tłumaczenie testowe"  # zamień na faktyczne wywołanie OpenAI
     # print(data_url)
     system_prompt = (
-        "Jesteś profesjonalnym tłumaczem komiksów. "
-        "Zachowuj styl, emocje i charakter postaci. "
-        "Przetłumacz tekst z tej ramki komiksu na język polski tak, "
-        "aby brzmiał naturalnie i oddawał humor lub dramatyzm oryginału. "
-        "Nie dodawaj komentarzy, odpowiedź ma być tylko tekstem tłumaczenia."
+        "Jesteś nauczycielem języka. "
+        "Pomagaj mi w nauce. " 
+        "Dostaniesz panele komiksowe. " 
+        "Tłumacz tekst, gramatykę, dodawaj romaji. " 
+        "Jeśli są jakieś ukryte znaczenia lub dwuznaczności wymagające znajomości np. kultury Japonii to też dodawaj. "
     )
     
     response = client.chat.completions.create(
@@ -56,7 +56,12 @@ def translate_frame(image_crop):
             {
                 "role": "user",
                 "content": [
-                    {"type": "text", "text": "Przetłumacz tekst na polski"},
+                    {"type": "text", "text": (
+                        "Przetłumacz tekst na polski i przygotuj odpowiedź w formacie Markdown. "
+                        "Używaj **pogrubienia**, _kursywy_, list i innych elementów Markdown, "
+                        "aby oddać strukturę tekstu w komiksie. "
+                        "Komiks to 'Crayon Shin-Chan'. Mozesz użyć wiedzy o tej serii, jeśli to pomoże."
+                    )},
                     {"type": "image_url", "image_url": {"url": data_url}}
                 ]
             }
@@ -112,6 +117,7 @@ def process_page(image_file):
 <head>
 <meta charset="UTF-8">
 <title>{image_file.name} – panels</title>
+<script src="https://cdn.jsdelivr.net/npm/marked@12.0.0/marked.min.js"></script>
 <style>
   .container {{ position: relative; display: inline-block; }}
   img {{ max-width: 100%; height: auto; display: block; }}
@@ -119,7 +125,18 @@ def process_page(image_file):
     display: none; position: fixed; top: 50%; left: 50%;
     transform: translate(-50%, -50%);
     background: white; border: 2px solid #333; padding: 20px; z-index: 100;
+    max-width: 80vw; max-height: 80vh; overflow: auto;
+    box-shadow: 0 4px 20px rgba(0,0,0,0.3);
   }}
+  #modalText {{
+    line-height: 1.6;
+  }}
+  #modalText h1, #modalText h2, #modalText h3 {{ margin-top: 0; }}
+  #modalText p {{ margin: 0.5em 0; }}
+  #modalText ul, #modalText ol {{ margin: 0.5em 0; padding-left: 1.5em; }}
+  #modalText strong {{ font-weight: bold; }}
+  #modalText em {{ font-style: italic; }}
+  #modalText code {{ background: #f5f5f5; padding: 0.2em 0.4em; border-radius: 3px; }}
 </style>
 </head>
 <body>
@@ -129,7 +146,7 @@ def process_page(image_file):
     {areas_html}
   </map>
 </div>
-<div id="modal"><span id="modalText"></span></div>
+<div id="modal"><div id="modalText"></div></div>
 
 <script>
 const translations = {json.dumps(translations, ensure_ascii=False)};
@@ -139,7 +156,12 @@ document.querySelectorAll('area').forEach(area => {{
         e.preventDefault();
         const id = area.dataset.id;
         const t = translations.find(tr => tr.id === id);
-        document.getElementById('modalText').innerHTML = t ? "<pre>" + t.translation + "</pre>" : "<div>Brak tłumaczenia</div>";
+        const modalText = document.getElementById('modalText');
+        if (t && t.translation) {{
+            modalText.innerHTML = marked.parse(t.translation);
+        }} else {{
+            modalText.innerHTML = '<p>Brak tłumaczenia</p>';
+        }}
         document.getElementById('modal').style.display = 'block';
     }});
 }});
