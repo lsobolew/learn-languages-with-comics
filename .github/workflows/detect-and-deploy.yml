@@ -1,11 +1,10 @@
-name: Detect and Deploy Comic Panels
+name: Detect and Deploy Comic Panels (map/area)
 
 on:
   push:
     branches: ["main"]
     paths:
-      - "comic/**.jpg"
-      - "comic/**.png"
+      - "comic/**"
       - "scripts/**.py"
       - ".github/workflows/**.yml"
   workflow_dispatch:
@@ -29,30 +28,18 @@ jobs:
 
       - name: Install dependencies
         run: |
-          pip install ultralytics pillow matplotlib
+          pip install ultralytics pillow
 
       - name: Download YOLO model
         run: |
           mkdir -p models
+          # podmień URL na swój model (HF/Ultralytics HUB/itp.)
           curl -L -o models/comic.pt https://huggingface.co/mosesb/best-comic-panel-detection/resolve/main/best.pt
 
-      - name: Run detection script
+      - name: Run detection (no commit, generate output only)
         run: python scripts/detect.py
 
-      - name: Prepare index.html
-        run: |
-          cat > output/index.html <<'EOF'
-          <!DOCTYPE html>
-          <html lang="en">
-          <head><meta charset="UTF-8"><title>Comic Panels</title></head>
-          <body>
-            <h1>Comic with Detected Panels</h1>
-            <iframe src="shinchan.html" width="100%" height="900px"></iframe>
-          </body>
-          </html>
-          EOF
-
-      - name: Upload artifact
+      - name: Upload artifact for Pages
         uses: actions/upload-pages-artifact@v3
         with:
           path: output/
