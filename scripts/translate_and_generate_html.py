@@ -6,6 +6,8 @@ import json
 from pathlib import Path
 from PIL import Image
 from openai import OpenAI
+import hashlib
+import base64
 
 INPUT_DIR = Path("output")  # artefakt z poprzedniego joba
 client = OpenAI(api_key=os.environ["OPENAI_API_KEY"])
@@ -18,26 +20,57 @@ def translate_frame(image_crop):
     buf = io.BytesIO()
     image_crop.save(buf, format="PNG")
     buf.seek(0)
+    image_bytes = buf.read()
+    image_b64 = base64.b64encode(image_bytes).decode("utf-8")
+    data_url = f"data:image/png;base64,{image_b64}"
 
+    # zapis scropowanego obrazu z bufora do katalogu frames
+    frames_dir = INPUT_DIR / "frames"
+    frames_dir.mkdir(parents=True, exist_ok=True)
+    data = buf.getvalue()
+    frame_hash = hashlib.sha1(data).hexdigest()[:12]
+    frame_path = frames_dir / f"frame_{frame_hash}.png"
+    with open(frame_path, "wb") as f:
+        f.write(data)
+
+    # przygotuj obraz jako data URL (base64) do wysłania w wiadomości
+    # b64 = base64.b64encode(data).decode("utf-8")
+    # data_url = f"data:image/png;base64,{b64}"
+    # response = "Tłumaczenie testowe"  # zamień na faktyczne wywołanie OpenAI
+    # print(data_url)
+    system_prompt = (
+        "Jesteś profesjonalnym tłumaczem komiksów. "
+        "Zachowuj styl, emocje i charakter postaci. "
+        "Przetłumacz tekst z tej ramki komiksu na język polski tak, "
+        "aby brzmiał naturalnie i oddawał humor lub dramatyzm oryginału. "
+        "Nie dodawaj komentarzy, odpowiedź ma być tylko tekstem tłumaczenia."
+    )
+    
     response = client.chat.completions.create(
-        model="gpt-4o-mini",
+        model="chatgpt-4o-latest",
         messages=[
             {
                 "role": "system",
-                "content": "Jesteś pomocnym tłumaczem komiksów. Przetłumacz tekst z tego fragmentu komiksu na język polski."
+                "content": system_prompt
             },
             {
                 "role": "user",
                 "content": [
-                    {"type": "input_text", "text": "Przetłumacz na polski"},
-                    {"type": "input_image", "image_data": buf.getvalue()},
+                    {"type": "text", "text": "Przetłumacz tekst na polski"},
+                    {"type": "image_url", "image_url": {"url": data_url}}
                 ]
             }
-        ]
+        ],
+        temperature=0.4,   # niższa wartość = bardziej spójne tłumaczenie
+        max_tokens=300 
     )
+
+    print("OpenAI response:", response.choices[0].message.content.strip())
+    # return response
     return response.choices[0].message.content.strip()
 
 def process_page(image_file):
+    print("Process", image_file)
     base = image_file.stem
     json_file = INPUT_DIR / f"{base}.json"
     if not json_file.exists():
@@ -48,15 +81,18 @@ def process_page(image_file):
     with open(json_file, "r") as f:
         boxes = json.load(f)
 
+    print("JSON", boxes)
     img = Image.open(image_file).convert("RGB")
 
     translations = []
-    for b in boxes:
-        x1, y1 = int(b["x"]), int(b["y"])
-        x2, y2 = int(b["x"] + b["width"]), int(b["y"] + b["height"])
+    for idx, b in enumerate(boxes):
+        x1, y1 = int(b["x1"]), int(b["y1"])
+        x2, y2 = int(b["x2"]), int(b["y2"])
         crop = img.crop((x1, y1, x2, y2))
+
         translation = translate_frame(crop)
-        translations.append({"id": b["id"], "translation": translation})
+        trans_id = b.get("id", idx)
+        translations.append({"id": trans_id, "translation": translation})
 
     # zapisz tłumaczenia
     out_trans_file = INPUT_DIR / f"{base}_translations.json"
@@ -68,7 +104,7 @@ def process_page(image_file):
     w, h = img.size
 
     areas_html = "\n    ".join(
-        f'<area shape="rect" coords="{int(b["x"])},{int(b["y"])},{int(b["x"]+b["width"])},{int(b["y"]+b["height"])}" '
+        f'<area shape="rect" coords="{int(b["x1"])},{int(b["y1"])},{int(b["x2"])},{int(b["y2"])}" '
         f'data-id="{b["id"]}" href="#"></area>'
         for b in boxes
     )
@@ -103,7 +139,7 @@ const translations = {json.dumps(translations, ensure_ascii=False)};
 document.querySelectorAll('area').forEach(area => {{
     area.addEventListener('click', e => {{
         e.preventDefault();
-        const id = parseInt(area.dataset.id);
+        const id = area.dataset.id;
         const t = translations.find(tr => tr.id === id);
         document.getElementById('modalText').textContent = t ? t.translation : "Brak tłumaczenia";
         document.getElementById('modal').style.display = 'block';

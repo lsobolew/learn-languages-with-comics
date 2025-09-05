@@ -2,6 +2,7 @@
 import os
 import json
 import shutil
+import hashlib
 from glob import glob
 from pathlib import Path
 from PIL import Image
@@ -18,6 +19,13 @@ model = YOLO(str(MODEL_PATH))
 def to_ints(*nums):
     return [int(round(float(n))) for n in nums]
 
+def make_box_id(x1, y1, x2, y2):
+    """Zwraca stabilny skrót na podstawie współrzędnych ramki.
+    Używamy zaokrąglenia do 2 miejsc, by uniknąć szumu FP.
+    """
+    key = f"{float(x1):.2f}-{float(y1):.2f}-{float(x2):.2f}-{float(y2):.2f}"
+    return hashlib.md5(key.encode("utf-8")).hexdigest()[:12]
+
 def build_image_map_html(img_name, w, h, boxes):
     """
     img_name: nazwa pliku (np. shinchan.jpg) umieszczonego w katalogu output/
@@ -26,6 +34,7 @@ def build_image_map_html(img_name, w, h, boxes):
     """
     # obszary <area>
     areas = []
+    print(boxes)
     for i, b in enumerate(boxes, 1):
         x1, y1, x2, y2 = to_ints(b["x1"], b["y1"], b["x2"], b["y2"])
         areas.append(
@@ -122,10 +131,17 @@ for in_path in image_paths:
     boxes = []
     for b in r0.boxes:
         x1, y1, x2, y2 = b.xyxy[0].tolist()
-        boxes.append({"x1": float(x1), "y1": float(y1), "x2": float(x2), "y2": float(y2)})
+        box_id = make_box_id(x1, y1, x2, y2)
+        boxes.append({
+            "id": box_id,
+            "x1": float(x1),
+            "y1": float(y1),
+            "x2": float(x2),
+            "y2": float(y2),
+        })
 
-    # sortowanie: wierszami (y), następnie kolumnami (x)
-    boxes.sort(key=lambda b: (b["y1"], b["x1"]))
+    # sortowanie dla mangi: od góry (y rosnąco) i od prawej (x malejąco)
+    boxes.sort(key=lambda b: (b["y1"], -b["x1"]))
 
     # zapisz JSON
     with open(out_json, "w") as f:
