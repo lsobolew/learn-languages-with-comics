@@ -255,8 +255,8 @@ document.querySelectorAll('area').forEach(area => {{
     with open(html_file, "w", encoding="utf-8") as f:
         f.write(html_content)
 
-# główna pętla po wszystkich stronach w output/
-for img_path in INPUT_DIR.glob("*.jpg"):
+# główna pętla po wszystkich stronach w output/ (posortowane alfabetycznie)
+for img_path in sorted(INPUT_DIR.glob("*.jpg")):
     process_page(img_path)
 
 print("Gotowe: przetłumaczone JSON-y i HTML w katalogu output/")

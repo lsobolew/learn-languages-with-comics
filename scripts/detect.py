@@ -105,10 +105,11 @@ def build_image_map_html(img_name, w, h, boxes):
 </html>"""
     return html
 
-# przetwarzanie wszystkich obrazów
+# przetwarzanie wszystkich obrazów (posortowane alfabetycznie)
 image_paths = []
 for ext in ("*.jpg", "*.jpeg", "*.png", "*.webp"):
     image_paths += glob(str(INPUT_DIR / ext))
+image_paths.sort()
 
 if not image_paths:
     print("Brak plików w katalogu 'comic/'.")
