@@ -1,0 +1,7 @@
+# Podstawowe paczki
+ultralytics==8.3.34
+pillow==10.4.0
+
+# YOLO potrzebuje PyTorch
+torch==2.2.2
+torchvision==0.17.2

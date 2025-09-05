@@ -1,0 +1,13 @@
+-r requirements.txt
+
+# Formatowanie i linting
+black==24.8.0
+flake8==7.1.1
+isort==5.13.2
+
+# Typowanie opcjonalne
+mypy==1.11.2
+
+# Jupyter (jeśli chcesz eksperymentować lokalnie)
+jupyter==1.0.0
+ipykernel==6.29.5
