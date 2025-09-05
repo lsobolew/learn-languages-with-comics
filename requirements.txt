@@ -8,3 +8,6 @@ torchvision==0.17.2
 
 # Wymuszenie NumPy <2, aby uniknąć błędów z modułami skompilowanymi pod 1.x
 numpy<2
+
+# OpenAI API
+openai>=1.0.0
