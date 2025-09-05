@@ -47,7 +47,7 @@ def translate_frame(image_crop):
     )
     
     response = client.chat.completions.create(
-        model="chatgpt-4o-latest",
+        model="gpt-5-mini",
         messages=[
             {
                 "role": "system",
@@ -60,9 +60,7 @@ def translate_frame(image_crop):
                     {"type": "image_url", "image_url": {"url": data_url}}
                 ]
             }
-        ],
-        temperature=0.4,   # niższa wartość = bardziej spójne tłumaczenie
-        max_tokens=300 
+        ]
     )
 
     print("OpenAI response:", response.choices[0].message.content.strip())
